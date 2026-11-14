@@ -1,0 +1,14 @@
+{
+  "variables": [
+    {
+      "id": "temperature",
+      "label": "Air temperature at 2 m",
+      "file": "temperature.json"
+    },
+    {
+      "id": "precipitation",
+      "label": "Precipitation",
+      "file": "precipitation.json"
+    }
+  ]
+}

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SEESAW - Earth's Opposite-Trend Detective</title>
+<meta name="description" content="Find where an Earth science variable is rising, where it is falling, and whether the change is significant.">
+<link rel="stylesheet" href="vendor/leaflet.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <div class="brand">
+    <h1>SEESAW</h1>
+    <p>Earth's Opposite-Trend Detective</p>
+  </div>
+  <div class="controls">
+    <label>Variable
+      <select id="variable"></select>
+    </label>
+    <label class="switch" title="Benjamini-Hochberg false discovery rate across the whole map">
+      <input type="checkbox" id="fdr" checked>
+      <span>FDR correction</span>
+    </label>
+  </div>
+</header>
+
+<div id="sample-banner" hidden>
+  SAMPLE DATA: these values are synthetic, generated to test the interface. They are not NASA observations.
+</div>
+
+<main>
+  <section id="map-wrap">
+    <div id="map"></div>
+    <div id="legend">
+      <div id="legend-title"></div>
+      <div id="legend-bar"></div>
+      <div class="legend-ticks"><span id="legend-min"></span><span>0</span><span id="legend-max"></span></div>
+      <div class="legend-note"><i class="sw solid"></i> significant <i class="sw faint"></i> not significant</div>
+    </div>
+  </section>
+
+  <aside>
+    <section class="card">
+      <h2>Is it significant?</h2>
+      <p id="field-summary">Loading data...</p>
+    </section>
+
+    <section class="card">
+      <h2>Region A</h2>
+      <p id="a-info" class="muted">Click any cell on the map to open its case.</p>
+      <button id="find" disabled>Find my seesaw</button>
+      <div id="partners"></div>
+    </section>
+
+    <section class="card">
+      <h2>Change over time</h2>
+      <p class="muted small">Annual values minus each region's own average. Dashed lines are the Theil-Sen trends.</p>
+      <div class="chart-box"><canvas id="chart"></canvas></div>
+    </section>
+
+    <section class="card">
+      <div class="row">
+        <h2>Case File</h2>
+        <button id="copy" class="ghost" disabled>Copy text</button>
+      </div>
+      <pre id="casefile">No case open yet.</pre>
+    </section>
+
+    <footer>
+      <p id="credits"></p>
+      <p>Method: Theil-Sen slope, Mann-Kendall test with trend-free pre-whitening, Benjamini-Hochberg FDR.
+      A seesaw is statistical evidence of a possible shared driver, not proof of cause.</p>
+      <p>Parts of this project's code and text were produced with the assistance of a large language model and reviewed by the team.
+      NASA does not endorse this project.</p>
+    </footer>
+  </aside>
+</main>
+
+<script src="vendor/leaflet.js"></script>
+<script src="vendor/chart.umd.js"></script>
+<script src="seesaw.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

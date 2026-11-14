@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pyc
+pipeline/raw/
+.vercel/
+.DS_Store
+node_modules/
