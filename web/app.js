@@ -61,13 +61,22 @@
     return '<span class="badge ' + cls + '">' + b + "</span>";
   }
 
-  // Diamonds: significant cells are full size, the others are small. Size, not
-  // transparency, carries significance, and the gaps let the base map show through.
-  function diamond(c, k) {
-    var h = (state.data.meta.resolution_deg / 2) * k;
-    return [[c.lat + h, c.lon], [c.lat, c.lon + h], [c.lat - h, c.lon], [c.lat, c.lon - h]];
+  // Honeycomb: alternate rows are shifted by a quarter cell each way, so the
+  // hexagons interlock. The shift is display only; tooltips and the Case File
+  // always report the true cell centre.
+  function center(c) {
+    var res = state.data.meta.resolution_deg;
+    var row = Math.round(c.lat / res);
+    var shift = (((row % 2) + 2) % 2 ? 0.25 : -0.25) * res;
+    return [c.lat, c.lon + shift];
   }
-  function sizeFor(c) { return S.isSignificant(c, state.useFdr) ? 0.96 : 0.38; }
+  function hexagon(c, k) {
+    var res = state.data.meta.resolution_deg, p = center(c);
+    var w = (res / 2) * k, h = (res * 2 / 3) * k;
+    return [[p[0] + h, p[1]], [p[0] + h / 2, p[1] + w], [p[0] - h / 2, p[1] + w],
+            [p[0] - h, p[1]], [p[0] - h / 2, p[1] - w], [p[0] + h / 2, p[1] - w]];
+  }
+  function sizeFor(c) { return S.isSignificant(c, state.useFdr) ? 0.93 : 0.42; }
   function styleFor(c) {
     var sig = S.isSignificant(c, state.useFdr);
     return { stroke: false, fillColor: colour(c.slope), fillOpacity: sig ? 0.95 : 0.55 };
@@ -77,7 +86,7 @@
     grid.clearLayers();
     state.shapes = [];
     state.cells.forEach(function (c) {
-      var p = L.polygon(diamond(c, sizeFor(c)), styleFor(c));
+      var p = L.polygon(hexagon(c, sizeFor(c)), styleFor(c));
       p.on("click", function () { selectA(c, true); });
       p.on("mouseover", function () { p.setStyle({ stroke: true, color: CREAM, weight: 1.5 }); p.bringToFront(); });
       p.on("mouseout", function () { p.setStyle({ stroke: false }); });
@@ -92,7 +101,7 @@
   function restyle() {
     state.shapes.forEach(function (p, i) {
       var c = state.cells[i];
-      p.setLatLngs(diamond(c, sizeFor(c)));
+      p.setLatLngs(hexagon(c, sizeFor(c)));
       p.setStyle(styleFor(c));
     });
   }
@@ -133,7 +142,7 @@
   }
 
   function pin(cell, letter) {
-    return L.marker([cell.lat, cell.lon], {
+    return L.marker(center(cell), {
       interactive: false,
       icon: L.divIcon({ className: "", html: '<div class="pin ' + letter.toLowerCase() + '">' + letter + "</div>", iconSize: [28, 28], iconAnchor: [14, 14] })
     });
@@ -143,7 +152,7 @@
     marks.clearLayers();
     if (!state.a) return;
     if (state.pair) {
-      L.polyline([[state.a.lat, state.a.lon], [state.pair.cell.lat, state.pair.cell.lon]],
+      L.polyline([center(state.a), center(state.pair.cell)],
         { color: CREAM, weight: 2.5, interactive: false, renderer: svgRenderer, className: "seesaw-line" }).addTo(marks);
       pin(state.pair.cell, "B").addTo(marks);
     }
@@ -301,7 +310,7 @@
       $("sample-banner").hidden = !data.meta.synthetic;
       $("credits").textContent = "Data: " + data.meta.source + " Processed " + data.meta.generated + ".";
       $("a-info").className = "muted";
-      $("a-info").textContent = "Click any diamond on the map, or let SEESAW pick the strongest case.";
+      $("a-info").textContent = "Click any hexagon on the map, or let SEESAW pick the strongest case.";
       $("find").disabled = true;
       $("hint").classList.remove("gone");
       drawGrid(); drawLegend(); drawSummary(); drawPartners(); refreshSelection();
