@@ -15,6 +15,22 @@
     precip: { neg: [226, 140, 62], mid: [58, 48, 40], pos: [62, 190, 200] }
   };
   var CREAM = "#ecdcc0", ORANGE = "#e08a3c", MUTED = "#a8967a", GRID = "rgba(236,220,192,.08)";
+  var states = {
+    "11": { code: "RO", name: "Rondônia" }, "12": { code: "AC", name: "Acre" },
+    "13": { code: "AM", name: "Amazonas" }, "14": { code: "RR", name: "Roraima" },
+    "15": { code: "PA", name: "Pará" }, "16": { code: "AP", name: "Amapá" },
+    "17": { code: "TO", name: "Tocantins" }, "21": { code: "MA", name: "Maranhão" },
+    "22": { code: "PI", name: "Piauí" }, "23": { code: "CE", name: "Ceará" },
+    "24": { code: "RN", name: "Rio Grande do Norte" }, "25": { code: "PB", name: "Paraíba" },
+    "26": { code: "PE", name: "Pernambuco" }, "27": { code: "AL", name: "Alagoas" },
+    "28": { code: "SE", name: "Sergipe" }, "29": { code: "BA", name: "Bahia" },
+    "31": { code: "MG", name: "Minas Gerais" }, "32": { code: "ES", name: "Espírito Santo" },
+    "33": { code: "RJ", name: "Rio de Janeiro" }, "35": { code: "SP", name: "São Paulo" },
+    "41": { code: "PR", name: "Paraná" }, "42": { code: "SC", name: "Santa Catarina" },
+    "43": { code: "RS", name: "Rio Grande do Sul" }, "50": { code: "MS", name: "Mato Grosso do Sul" },
+    "51": { code: "MT", name: "Mato Grosso" }, "52": { code: "GO", name: "Goiás" },
+    "53": { code: "DF", name: "Distrito Federal" }
+  };
 
   var state = { data: null, cells: [], mapCells: [], shapes: [], a: null, pairs: [], pair: null, scaleMax: 1, useFdr: true, hover: null };
   var $ = function (id) { return document.getElementById(id); };
@@ -23,23 +39,79 @@
   var map = L.map("map", { preferCanvas: true, worldCopyJump: true, zoomSnap: 0.5, minZoom: 3, maxZoom: 8 }).setView([-14, -54], 4);
   // Base map: OpenStreetMap tiles, darkened with a CSS filter (no API key needed).
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    className: "osm-dark", attribution: "&copy; OpenStreetMap contributors · borders: Natural Earth"
+    className: "osm-dark", attribution: "&copy; OpenStreetMap contributors · country borders: Natural Earth · state boundaries: IBGE"
   }).addTo(map);
   // Country borders are bundled with the site and drawn above the data,
   // so the map stays readable even if the tile server is unreachable.
   map.createPane("borders");
   map.getPane("borders").style.zIndex = 450;
   map.getPane("borders").style.pointerEvents = "none";
+  map.createPane("stateLabels");
+  map.getPane("stateLabels").style.zIndex = 550;
+  map.getPane("stateLabels").style.pointerEvents = "none";
+  var stateGeo = null;
   fetch("assets/borders.json").then(function (r) { return r.json(); }).then(function (geo) {
     L.geoJSON(geo, { pane: "borders", renderer: L.svg({ pane: "borders" }), interactive: false,
       style: { color: "#ecdcc0", weight: 1.1, opacity: 0.75, fill: false } }).addTo(map);
-  }).catch(function () {});
+  }).catch(function (err) { console.error("Could not load country borders.", err); });
+  fetch("assets/states.json").then(function (r) {
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return r.json();
+  }).then(function (geo) {
+    stateGeo = geo;
+    L.geoJSON(geo, { pane: "borders", renderer: L.svg({ pane: "borders" }), interactive: false,
+      style: { color: "#ecdcc0", weight: 1.05, opacity: 0.82, fill: false } }).addTo(map);
+    drawStateLabels();
+  }).catch(function (err) { console.error("Could not load Brazilian state boundaries.", err); });
 
   var grid = L.layerGroup().addTo(map);
   var marks = L.layerGroup().addTo(map);
+  var stateLabels = L.layerGroup().addTo(map);
   var svgRenderer = L.svg();
   var chart = null;
   var brazilRing = null;
+
+  function stateLabelCenter(feature) {
+    var geometry = feature.geometry;
+    var polygons = geometry.type === "Polygon" ? [geometry.coordinates] : geometry.coordinates;
+    var largestArea = 0, center = null;
+    polygons.forEach(function (polygon) {
+      var ring = polygon[0], area = 0, x = 0, y = 0;
+      for (var i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        var cross = ring[j][0] * ring[i][1] - ring[i][0] * ring[j][1];
+        area += cross;
+        x += (ring[j][0] + ring[i][0]) * cross;
+        y += (ring[j][1] + ring[i][1]) * cross;
+      }
+      if (Math.abs(area) > largestArea) {
+        largestArea = Math.abs(area);
+        center = [y / (3 * area), x / (3 * area)];
+      }
+    });
+    return center;
+  }
+
+  function drawStateLabels() {
+    stateLabels.clearLayers();
+    if (!stateGeo) return;
+    stateGeo.features.forEach(function (feature) {
+      var state = states[feature.properties.codarea];
+      if (!state) return;
+      var label = L.marker(stateLabelCenter(feature), {
+        pane: "stateLabels",
+        interactive: false,
+        title: state.name,
+        icon: L.divIcon({
+          className: "state-marker",
+          html: '<span class="state-label">' + state.code + "</span>",
+          iconSize: [28, 22],
+          iconAnchor: [14, 11]
+        })
+      });
+      label.addTo(stateLabels);
+    });
+  }
+  map.on("zoomend", drawStateLabels);
 
   Chart.defaults.color = MUTED;
   Chart.defaults.borderColor = GRID;
@@ -80,7 +152,7 @@
   function sizeFor(c) { return S.isSignificant(c, state.useFdr) ? 0.93 : 0.42; }
   function styleFor(c) {
     var sig = S.isSignificant(c, state.useFdr);
-    return { stroke: false, fillColor: colour(c.slope), fillOpacity: sig ? 0.95 : 0.55 };
+    return { stroke: false, fillColor: colour(c.slope), fillOpacity: sig ? 0.82 : 0.35 };
   }
 
   function containsBrazilPoint(lon, lat) {

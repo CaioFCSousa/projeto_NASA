@@ -40,7 +40,15 @@ main { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 430px; min-
 .leaflet-tooltip { background: var(--bg); color: var(--cream); border: 1px solid var(--line); box-shadow: 0 4px 14px rgba(0,0,0,.5); }
 .leaflet-tooltip-top:before, .leaflet-tooltip-bottom:before, .leaflet-tooltip-left:before, .leaflet-tooltip-right:before { display: none; }
 
-.osm-dark { filter: invert(1) hue-rotate(180deg) brightness(.72) contrast(.9) sepia(.35) saturate(.7); }
+.osm-dark { filter: invert(1) hue-rotate(180deg) brightness(.82) contrast(1) sepia(.25) saturate(.8); }
+
+.state-marker { background: transparent; border: 0; }
+.state-label {
+  display: flex; align-items: center; justify-content: center; width: 26px; height: 20px;
+  border: 1px solid rgba(236,220,192,.72); border-radius: 5px;
+  background: rgba(25,29,27,.82); color: #fff7ea; font-size: 10px; font-weight: 800;
+  letter-spacing: .04em; box-shadow: 0 1px 4px rgba(0,0,0,.65);
+}
 
 #hint { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 500; background: rgba(30,21,11,.9); border: 1px solid var(--line); color: var(--cream); padding: 6px 14px; border-radius: 999px; font-size: 13px; pointer-events: none; animation: float 2.4s ease-in-out infinite; transition: opacity .4s; }
 #hint.gone { opacity: 0; }
@@ -53,6 +61,8 @@ main { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 430px; min-
 .legend-note { margin-top: 7px; color: var(--muted); display: flex; gap: 14px; align-items: center; }
 .hex { display: inline-block; background: var(--cream); clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); margin-right: 7px; vertical-align: middle; }
 .hex.big { width: 12px; height: 14px; } .hex.small { width: 6px; height: 7px; opacity: .6; }
+.state-key { display: inline-block; width: 13px; border-top: 2px solid var(--cream); margin-right: 6px; vertical-align: middle; }
+.state-code-key { display: inline-block; padding: 1px 3px; border: 1px solid rgba(236,220,192,.72); border-radius: 3px; color: var(--cream); font-size: 9px; font-style: normal; font-weight: 800; margin-right: 4px; vertical-align: middle; }
 
 aside { overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 12px; border-left: 1px solid var(--line); background: var(--panel); }
 .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; animation: rise .45s ease both; }

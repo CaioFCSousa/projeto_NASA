@@ -130,6 +130,7 @@ git push -u origin feat/short-description   # open a Pull Request into main
 
 - Leaflet 1.9.4 (BSD-2-Clause), Chart.js 4.4.1 (MIT), NumPy, SciPy, Requests.
 - Base map: © OpenStreetMap contributors.
+- Brazilian state boundaries and UF labels: IBGE Geoservices API.
 - Methods: Mann (1945); Kendall (1975); Sen (1968); Benjamini and Hochberg (1995);
   Yue et al. (2002), trend-free pre-whitening; Wilks (2016), field significance.
 
