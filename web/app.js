@@ -16,11 +16,11 @@
   };
   var CREAM = "#ecdcc0", ORANGE = "#e08a3c", MUTED = "#a8967a", GRID = "rgba(236,220,192,.08)";
 
-  var state = { data: null, cells: [], shapes: [], a: null, pairs: [], pair: null, scaleMax: 1, useFdr: true, hover: null };
+  var state = { data: null, cells: [], mapCells: [], shapes: [], a: null, pairs: [], pair: null, scaleMax: 1, useFdr: true, hover: null };
   var $ = function (id) { return document.getElementById(id); };
   var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  var map = L.map("map", { preferCanvas: true, zoomSnap: 0.5, minZoom: 3, maxZoom: 8 }).setView([-14, -54], 4);
+  var map = L.map("map", { preferCanvas: true, worldCopyJump: true, zoomSnap: 0.5, minZoom: 3, maxZoom: 8 }).setView([-14, -54], 4);
   // Base map: OpenStreetMap tiles, darkened with a CSS filter (no API key needed).
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     className: "osm-dark", attribution: "&copy; OpenStreetMap contributors · borders: Natural Earth"
@@ -39,6 +39,7 @@
   var marks = L.layerGroup().addTo(map);
   var svgRenderer = L.svg();
   var chart = null;
+  var brazilRing = null;
 
   Chart.defaults.color = MUTED;
   Chart.defaults.borderColor = GRID;
@@ -82,10 +83,33 @@
     return { stroke: false, fillColor: colour(c.slope), fillOpacity: sig ? 0.95 : 0.55 };
   }
 
+  function containsBrazilPoint(lon, lat) {
+    var inside = false, x = lon, y = lat;
+    for (var i = 0, j = brazilRing.length - 1; i < brazilRing.length; j = i++) {
+      var xi = brazilRing[i][0], yi = brazilRing[i][1];
+      var xj = brazilRing[j][0], yj = brazilRing[j][1];
+      if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+  }
+
+  function isInBrazil(cell) {
+    var vertices = hexagon(cell, 0.93);
+    if (!containsBrazilPoint(cell.lon, cell.lat)) return false;
+    for (var i = 0; i < vertices.length; i++) {
+      var a = vertices[i], b = vertices[(i + 1) % vertices.length];
+      for (var step = 0; step <= 4; step++) {
+        var t = step / 4;
+        if (!containsBrazilPoint(a[1] + (b[1] - a[1]) * t, a[0] + (b[0] - a[0]) * t)) return false;
+      }
+    }
+    return true;
+  }
+
   function drawGrid() {
     grid.clearLayers();
     state.shapes = [];
-    state.cells.forEach(function (c) {
+    state.mapCells.forEach(function (c) {
       var p = L.polygon(hexagon(c, sizeFor(c)), styleFor(c));
       p.on("click", function () { selectA(c, true); });
       p.on("mouseover", function () { p.setStyle({ stroke: true, color: CREAM, weight: 1.5 }); p.bringToFront(); });
@@ -100,7 +124,7 @@
 
   function restyle() {
     state.shapes.forEach(function (p, i) {
-      var c = state.cells[i];
+      var c = state.mapCells[i];
       p.setLatLngs(hexagon(c, sizeFor(c)));
       p.setStyle(styleFor(c));
     });
@@ -270,7 +294,7 @@
 
   function findSeesaw() {
     if (!state.a) return;
-    state.pairs = S.findSeesaw(state.a, state.cells, state.useFdr, 3);
+    state.pairs = S.findSeesaw(state.a, state.mapCells, state.useFdr, 3);
     state.pair = state.pairs[0] || null;
     if (!state.pairs.length) {
       drawPartners("No region with a significant opposite trend moves in anti-phase with A. " +
@@ -284,7 +308,7 @@
 
   // Picks, among the 40 strongest significant cells, the one with the best seesaw.
   function surprise() {
-    var top = state.cells.filter(function (c) { return S.isSignificant(c, state.useFdr); })
+    var top = state.mapCells.filter(function (c) { return S.isSignificant(c, state.useFdr); })
       .sort(function (x, y) { return Math.abs(y.beta) - Math.abs(x.beta); }).slice(0, 40);
     var best = null, bestScore = 0;
     top.forEach(function (c) {
@@ -304,6 +328,7 @@
     return fetch("data/" + file).then(function (r) { return r.json(); }).then(function (data) {
       state.data = data;
       state.cells = data.cells.map(function (row, i) { return S.makeCell(row, data.years, i); });
+      state.mapCells = state.cells.filter(isInBrazil);
       var abs = state.cells.map(function (c) { return Math.abs(c.slope); }).sort(function (x, y) { return x - y; });
       state.scaleMax = abs[Math.floor(abs.length * 0.98)] || 1;
       state.a = null; state.pairs = []; state.pair = null;
@@ -331,7 +356,13 @@
     });
   });
 
-  fetch("data/manifest.json").then(function (r) { return r.json(); }).then(function (man) {
+  fetch("assets/brazil.json").then(function (r) {
+    if (!r.ok) throw new Error("Could not load assets/brazil.json (HTTP " + r.status + ").");
+    return r.json();
+  }).then(function (geo) {
+    brazilRing = geo.coordinates[0];
+    return fetch("data/manifest.json").then(function (r) { return r.json(); });
+  }).then(function (man) {
     var seg = $("variable");
     man.variables.forEach(function (v, i) {
       var b = document.createElement("button");
@@ -346,7 +377,7 @@
     });
     return loadVariable(man.variables[0].file);
   }).catch(function (err) {
-    $("field-summary").textContent = "Could not load data/manifest.json. Run the pipeline first. (" + err + ")";
+    $("field-summary").textContent = "Could not load the Brazil boundary or map data. (" + err + ")";
   });
 
   window.__seesaw = { state: state, selectA: selectA, findSeesaw: findSeesaw, surprise: surprise };
